@@ -4,179 +4,288 @@
 #include "stdafx.h"
 #include "Win32Project_sample.h"
 
-#define MAX_LOADSTRING 100
+#include <windows.h>
+#include <GL/gl.h>
 
-// Global Variables:
-HINSTANCE hInst;								// current instance
-TCHAR szTitle[MAX_LOADSTRING];					// The title bar text
-TCHAR szWindowClass[MAX_LOADSTRING];			// the main window class name
+LPCWSTR className = L"OpenGL";
+LPCWSTR windowName = L"OpenGL Cube";
+int winX = 0, winY = 0;
+int winWidth = 300, winHeight = 300;
 
-// Forward declarations of functions included in this code module:
-ATOM				MyRegisterClass(HINSTANCE hInstance);
-BOOL				InitInstance(HINSTANCE, int);
-LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
+HWND hWnd;
+HDC hDC;
+HGLRC hGLRC;
+HPALETTE hPalette;
 
-int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
-                     _In_opt_ HINSTANCE hPrevInstance,
-                     _In_ LPTSTR    lpCmdLine,
-                     _In_ int       nCmdShow)
-{
-	UNREFERENCED_PARAMETER(hPrevInstance);
-	UNREFERENCED_PARAMETER(lpCmdLine);
+void
+init(void) {
+	/* set viewing projection */
+	glMatrixMode(GL_PROJECTION);
+	glFrustum(-0.5F, 0.5F, -0.5F, 0.5F, 1.0F, 3.0F);
 
- 	// TODO: Place code here.
-	MSG msg;
-	HACCEL hAccelTable;
+	/* position viewer */
+	glMatrixMode(GL_MODELVIEW);
+	glTranslatef(0.0F, 0.0F, -2.0F);
 
-	// Initialize global strings
-	LoadString(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
-	LoadString(hInstance, IDC_WIN32PROJECT_SAMPLE, szWindowClass, MAX_LOADSTRING);
-	MyRegisterClass(hInstance);
+	/* position object */
+	glRotatef(30.0F, 1.0F, 0.0F, 0.0F);
+	glRotatef(30.0F, 0.0F, 1.0F, 0.0F);
 
-	// Perform application initialization:
-	if (!InitInstance (hInstance, nCmdShow))
-	{
-		return FALSE;
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_LIGHTING);
+	glEnable(GL_LIGHT0);
+}
+
+void
+redraw(void) {
+	/* clear color and depth buffers */
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	static float angle = 1.f;
+	glRotatef(angle, 1.0F, 1.0F, 1.0F);
+	InvalidateRect(hWnd, NULL, FALSE);
+
+	/* draw six faces of a cube */
+	glBegin(GL_QUADS);
+	glNormal3f(0.0F, 0.0F, 1.0F);
+	glVertex3f(0.5F, 0.5F, 0.5F); glVertex3f(-0.5F, 0.5F, 0.5F);
+	glVertex3f(-0.5F, -0.5F, 0.5F); glVertex3f(0.5F, -0.5F, 0.5F);
+
+	glNormal3f(0.0F, 0.0F, -1.0F);
+	glVertex3f(-0.5F, -0.5F, -0.5F); glVertex3f(-0.5F, 0.5F, -0.5F);
+	glVertex3f(0.5F, 0.5F, -0.5F); glVertex3f(0.5F, -0.5F, -0.5F);
+
+	glNormal3f(0.0F, 1.0F, 0.0F);
+	glVertex3f(0.5F, 0.5F, 0.5F); glVertex3f(0.5F, 0.5F, -0.5F);
+	glVertex3f(-0.5F, 0.5F, -0.5F); glVertex3f(-0.5F, 0.5F, 0.5F);
+
+	glNormal3f(0.0F, -1.0F, 0.0F);
+	glVertex3f(-0.5F, -0.5F, -0.5F); glVertex3f(0.5F, -0.5F, -0.5F);
+	glVertex3f(0.5F, -0.5F, 0.5F); glVertex3f(-0.5F, -0.5F, 0.5F);
+
+	glNormal3f(1.0F, 0.0F, 0.0F);
+	glVertex3f(0.5F, 0.5F, 0.5F); glVertex3f(0.5F, -0.5F, 0.5F);
+	glVertex3f(0.5F, -0.5F, -0.5F); glVertex3f(0.5F, 0.5F, -0.5F);
+
+	glNormal3f(-1.0F, 0.0F, 0.0F);
+	glVertex3f(-0.5F, -0.5F, -0.5F); glVertex3f(-0.5F, -0.5F, 0.5F);
+	glVertex3f(-0.5F, 0.5F, 0.5F); glVertex3f(-0.5F, 0.5F, -0.5F);
+	glEnd();
+
+	SwapBuffers(hDC);
+}
+
+void
+resize(void) {
+	/* set viewport to cover the window */
+	glViewport(0, 0, winWidth, winHeight);
+}
+
+void
+setupPixelFormat(HDC hDC) {
+	PIXELFORMATDESCRIPTOR pfd = {
+		sizeof(PIXELFORMATDESCRIPTOR),  /* size */
+		1,                              /* version */
+		PFD_SUPPORT_OPENGL |
+		PFD_DRAW_TO_WINDOW |
+		PFD_DOUBLEBUFFER,               /* support double-buffering */
+		PFD_TYPE_RGBA,                  /* color type */
+		16,                             /* prefered color depth */
+		0, 0, 0, 0, 0, 0,               /* color bits (ignored) */
+		0,                              /* no alpha buffer */
+		0,                              /* alpha bits (ignored) */
+		0,                              /* no accumulation buffer */
+		0, 0, 0, 0,                     /* accum bits (ignored) */
+		16,                             /* depth buffer */
+		0,                              /* no stencil buffer */
+		0,                              /* no auxiliary buffers */
+		PFD_MAIN_PLANE,                 /* main layer */
+		0,                              /* reserved */
+		0, 0, 0,                        /* no layer, visible, damage masks */
+	};
+	int pixelFormat;
+
+	pixelFormat = ChoosePixelFormat(hDC, &pfd);
+	if (pixelFormat == 0) {
+		MessageBox(WindowFromDC(hDC), L"ChoosePixelFormat failed.", L"Error",
+			MB_ICONERROR | MB_OK);
+		exit(1);
 	}
 
-	hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_WIN32PROJECT_SAMPLE));
-
-	// Main message loop:
-	while (GetMessage(&msg, NULL, 0, 0))
-	{
-		if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
-		{
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
+	if (SetPixelFormat(hDC, pixelFormat, &pfd) != TRUE) {
+		MessageBox(WindowFromDC(hDC), L"SetPixelFormat failed.", L"Error",
+			MB_ICONERROR | MB_OK);
+		exit(1);
 	}
-
-	return (int) msg.wParam;
 }
 
-
-
+//void
+//setupPalette(HDC hDC) {
+//	int pixelFormat = GetPixelFormat(hDC);
+//	PIXELFORMATDESCRIPTOR pfd;
+//	LOGPALETTE* pPal;
+//	int paletteSize;
 //
-//  FUNCTION: MyRegisterClass()
+//	DescribePixelFormat(hDC, pixelFormat, sizeof(PIXELFORMATDESCRIPTOR), &pfd);
 //
-//  PURPOSE: Registers the window class.
+//	if (pfd.dwFlags & PFD_NEED_PALETTE) {
+//		paletteSize = 1 << pfd.cColorBits;
+//	}
+//	else {
+//		return;
+//	}
 //
-ATOM MyRegisterClass(HINSTANCE hInstance)
-{
-	WNDCLASSEX wcex;
+//	pPal = (LOGPALETTE*)
+//		malloc(sizeof(LOGPALETTE) + paletteSize * sizeof(PALETTEENTRY));
+//	pPal->palVersion = 0x300;
+//	pPal->palNumEntries = paletteSize;
+//
+//	/* build a simple RGB color palette */
+//	{
+//		int redMask = (1 << pfd.cRedBits) - 1;
+//		int greenMask = (1 << pfd.cGreenBits) - 1;
+//		int blueMask = (1 << pfd.cBlueBits) - 1;
+//		int i;
+//
+//		for (i = 0; i<paletteSize; ++i) {
+//			pPal->palPalEntry[i].peRed =
+//				(((i >> pfd.cRedShift) & redMask) * 255) / redMask;
+//			pPal->palPalEntry[i].peGreen =
+//				(((i >> pfd.cGreenShift) & greenMask) * 255) / greenMask;
+//			pPal->palPalEntry[i].peBlue =
+//				(((i >> pfd.cBlueShift) & blueMask) * 255) / blueMask;
+//			pPal->palPalEntry[i].peFlags = 0;
+//		}
+//	}
+//
+//	hPalette = CreatePalette(pPal);
+//	free(pPal);
+//
+//	if (hPalette) {
+//		SelectPalette(hDC, hPalette, FALSE);
+//		RealizePalette(hDC);
+//	}
+//}
 
-	wcex.cbSize = sizeof(WNDCLASSEX);
-
-	wcex.style			= CS_HREDRAW | CS_VREDRAW;
-	wcex.lpfnWndProc	= WndProc;
-	wcex.cbClsExtra		= 0;
-	wcex.cbWndExtra		= 0;
-	wcex.hInstance		= hInstance;
-	wcex.hIcon			= LoadIcon(hInstance, MAKEINTRESOURCE(IDI_WIN32PROJECT_SAMPLE));
-	wcex.hCursor		= LoadCursor(NULL, IDC_ARROW);
-	wcex.hbrBackground	= (HBRUSH)(COLOR_WINDOW+1);
-	wcex.lpszMenuName	= MAKEINTRESOURCE(IDC_WIN32PROJECT_SAMPLE);
-	wcex.lpszClassName	= szWindowClass;
-	wcex.hIconSm		= LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
-
-	return RegisterClassEx(&wcex);
-}
-
-//
-//   FUNCTION: InitInstance(HINSTANCE, int)
-//
-//   PURPOSE: Saves instance handle and creates main window
-//
-//   COMMENTS:
-//
-//        In this function, we save the instance handle in a global variable and
-//        create and display the main program window.
-//
-BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
-{
-   HWND hWnd;
-
-   hInst = hInstance; // Store instance handle in our global variable
-
-   hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, NULL, NULL, hInstance, NULL);
-
-   if (!hWnd)
-   {
-      return FALSE;
-   }
-
-   ShowWindow(hWnd, nCmdShow);
-   UpdateWindow(hWnd);
-
-   return TRUE;
-}
-
-//
-//  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
-//
-//  PURPOSE:  Processes messages for the main window.
-//
-//  WM_COMMAND	- process the application menu
-//  WM_PAINT	- Paint the main window
-//  WM_DESTROY	- post a quit message and return
-//
-//
-LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-	int wmId, wmEvent;
-	PAINTSTRUCT ps;
-	HDC hdc;
-
-	switch (message)
-	{
-	case WM_COMMAND:
-		wmId    = LOWORD(wParam);
-		wmEvent = HIWORD(wParam);
-		// Parse the menu selections:
-		switch (wmId)
-		{
-		case IDM_ABOUT:
-			DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-			break;
-		case IDM_EXIT:
-			DestroyWindow(hWnd);
-			break;
-		default:
-			return DefWindowProc(hWnd, message, wParam, lParam);
-		}
-		break;
-	case WM_PAINT:
-		hdc = BeginPaint(hWnd, &ps);
-		// TODO: Add any drawing code here...
-		EndPaint(hWnd, &ps);
-		break;
+LRESULT APIENTRY
+WndProc(
+HWND hWnd,
+UINT message,
+WPARAM wParam,
+LPARAM lParam) {
+	switch (message) {
+	case WM_CREATE:
+		/* initialize OpenGL rendering */
+		hDC = GetDC(hWnd);
+		setupPixelFormat(hDC);
+		//setupPalette(hDC);
+		hGLRC = wglCreateContext(hDC);
+		wglMakeCurrent(hDC, hGLRC);
+		init();
+		return 0;
 	case WM_DESTROY:
+		/* finish OpenGL rendering */
+		if (hGLRC) {
+			wglMakeCurrent(NULL, NULL);
+			wglDeleteContext(hGLRC);
+		}
+		if (hPalette) {
+			DeleteObject(hPalette);
+		}
+		ReleaseDC(hWnd, hDC);
 		PostQuitMessage(0);
+		return 0;
+	case WM_SIZE:
+		/* track window size changes */
+		if (hGLRC) {
+			winWidth = (int)LOWORD(lParam);
+			winHeight = (int)HIWORD(lParam);
+			resize();
+			return 0;
+		}
+	//case WM_PALETTECHANGED:
+	//	/* realize palette if this is *not* the current window */
+	//	if (hGLRC && hPalette && (HWND)wParam != hWnd) {
+	//		UnrealizeObject(hPalette);
+	//		SelectPalette(hDC, hPalette, FALSE);
+	//		RealizePalette(hDC);
+	//		redraw();
+	//		break;
+	//	}
+	//	break;
+	//case WM_QUERYNEWPALETTE:
+	//	/* realize palette if this is the current window */
+	//	if (hGLRC && hPalette) {
+	//		UnrealizeObject(hPalette);
+	//		SelectPalette(hDC, hPalette, FALSE);
+	//		RealizePalette(hDC);
+	//		redraw();
+	//		return TRUE;
+	//	}
+	//	break;
+	case WM_PAINT:
+	{
+		PAINTSTRUCT ps;
+		BeginPaint(hWnd, &ps);
+		if (hGLRC) {
+			redraw();
+		}
+		EndPaint(hWnd, &ps);
+		return 0;
+	}
+	break;
+	case WM_CHAR:
+		/* handle keyboard input */
+		switch ((int)wParam) {
+		case VK_ESCAPE:
+			DestroyWindow(hWnd);
+			return 0;
+		default:
+			break;
+		}
 		break;
 	default:
-		return DefWindowProc(hWnd, message, wParam, lParam);
-	}
-	return 0;
-}
-
-// Message handler for about box.
-INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-	UNREFERENCED_PARAMETER(lParam);
-	switch (message)
-	{
-	case WM_INITDIALOG:
-		return (INT_PTR)TRUE;
-
-	case WM_COMMAND:
-		if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
-		{
-			EndDialog(hDlg, LOWORD(wParam));
-			return (INT_PTR)TRUE;
-		}
 		break;
 	}
-	return (INT_PTR)FALSE;
+	return DefWindowProc(hWnd, message, wParam, lParam);
+}
+
+int APIENTRY
+WinMain(
+HINSTANCE hCurrentInst,
+HINSTANCE hPreviousInst,
+LPSTR lpszCmdLine,
+int nCmdShow) {
+	WNDCLASS wndClass;
+	MSG msg;
+
+	/* register window class */
+	wndClass.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
+	wndClass.lpfnWndProc = WndProc;
+	wndClass.cbClsExtra = 0;
+	wndClass.cbWndExtra = 0;
+	wndClass.hInstance = hCurrentInst;
+	wndClass.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+	wndClass.hCursor = LoadCursor(NULL, IDC_ARROW);
+	wndClass.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
+	wndClass.lpszMenuName = NULL;
+	wndClass.lpszClassName = className;
+	RegisterClass(&wndClass);
+
+	/* create window */
+	hWnd = CreateWindow(
+		className, windowName,
+		WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS,
+		winX, winY, winWidth, winHeight,
+		NULL, NULL, hCurrentInst, NULL);
+
+	/* display window */
+	ShowWindow(hWnd, nCmdShow);
+	UpdateWindow(hWnd);
+
+	/* process messages */
+	while (GetMessage(&msg, NULL, 0, 0) == TRUE) {
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
+	return msg.wParam;
 }
