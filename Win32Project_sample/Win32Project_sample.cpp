@@ -6,11 +6,14 @@
 
 #include <windows.h>
 #include <GL/gl.h>
+#include "Header.h"
+#include "Controller.h"
 
 LPCWSTR className = L"OpenGL";
 LPCWSTR windowName = L"OpenGL Cube";
 int winX = 0, winY = 0;
-int winWidth = 300, winHeight = 300;
+int winWidth = 512, winHeight = 512;
+Controller states;
 
 HWND hWnd;
 HDC hDC;
@@ -19,32 +22,63 @@ HPALETTE hPalette;
 
 void
 init(void) {
-	/* set viewing projection */
-	glMatrixMode(GL_PROJECTION);
-	glFrustum(-0.5F, 0.5F, -0.5F, 0.5F, 1.0F, 3.0F);
+	///* set viewing projection */
+	//glMatrixMode(GL_PROJECTION);
+	//glFrustum(-0.5F, 0.5F, -0.5F, 0.5F, 1.0F, 3.0F);
 
-	/* position viewer */
-	glMatrixMode(GL_MODELVIEW);
-	glTranslatef(0.0F, 0.0F, -2.0F);
+	///* position viewer */
+	//glMatrixMode(GL_MODELVIEW);
+	//glTranslatef(0.0F, 0.0F, -2.0F);
 
-	/* position object */
-	glRotatef(30.0F, 1.0F, 0.0F, 0.0F);
-	glRotatef(30.0F, 0.0F, 1.0F, 0.0F);
+	///* position object */
+	//glRotatef(30.0F, 1.0F, 0.0F, 0.0F);
+	//glRotatef(30.0F, 0.0F, 1.0F, 0.0F);
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_LIGHTING);
 	glEnable(GL_LIGHT0);
+	const auto light0_position = glm::vec4(-1.f, -1.f, -1.f, 0.f);
+	const auto light0_ambient = glm::vec4(0.f, 0.f, 0.f, 1.f);
+	const auto light0_diffuse = glm::vec4(0.01f, 0.01f, 0.01f, 1.f);
+	const auto light0_specular = glm::vec4(0.01f, 0.01f, 0.01f, 1.f);
+	glLightfv(GL_LIGHT0, GL_POSITION, glm::value_ptr(light0_position));
+	glLightfv(GL_LIGHT0, GL_AMBIENT, glm::value_ptr(light0_ambient));
+	glLightfv(GL_LIGHT0, GL_DIFFUSE, glm::value_ptr(light0_diffuse));
+	glLightfv(GL_LIGHT0, GL_SPECULAR, glm::value_ptr(light0_specular));
+
+	glEnable(GL_COLOR_MATERIAL);
+	glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+	const auto mat_specular = glm::vec4(1.0f, 1.0f, 1.0f, 1.f);
+	const auto mat_emission = glm::vec4(0.0f, 0.0f, 0.0f, 1.f);
+	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, glm::value_ptr(mat_specular));
+	glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, glm::value_ptr(mat_emission));
+
+	glClearColor(1.f, 1.f, 1.f, 1.f);
 }
 
 void
 redraw(void) {
 	/* clear color and depth buffers */
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	static float angle = 1.f;
-	glRotatef(angle, 1.0F, 1.0F, 1.0F);
-	InvalidateRect(hWnd, NULL, FALSE);
+	static auto angle = 0.0f;
+	states.m_rotation = glm::angleAxis<float>( glm::pi<float>() * angle, glm::normalize(glm::vec3(1, 1, 0)) );
+	angle += 0.01f;
+	glm::mat4 modelMatrix = glm::translate(glm::mat4(1.0f), states.m_pan)
+		* glm::toMat4(states.m_rotation)
+		* glm::scale(glm::mat4(1.0f), states.m_scale);
 
+	states.m_viewModelMat = states.m_camera.GetViewMatrix() * modelMatrix;
+	states.m_projectionMat = states.m_camera.GetProjectionMatrix();
+	states.m_projectionMatInv = glm::inverse(states.m_projectionMat);
+	states.m_mvp = states.m_projectionMat * states.m_viewModelMat;
+	states.m_mvpInv = glm::inverse(states.m_mvp);
+
+	glLoadMatrixf(glm::value_ptr(states.m_mvp));
+	//static float angle = 1.f;
+	//glRotatef(angle, 1.0F, 1.0F, 1.0F);
+	
 	/* draw six faces of a cube */
+	glColor3f(0, 0.5f, 0);
 	glBegin(GL_QUADS);
 	glNormal3f(0.0F, 0.0F, 1.0F);
 	glVertex3f(0.5F, 0.5F, 0.5F); glVertex3f(-0.5F, 0.5F, 0.5F);
@@ -72,6 +106,7 @@ redraw(void) {
 	glEnd();
 
 	SwapBuffers(hDC);
+	InvalidateRect(hWnd, NULL, FALSE);
 }
 
 void
