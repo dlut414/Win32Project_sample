@@ -33,27 +33,36 @@ init(void) {
 	///* position object */
 	//glRotatef(30.0F, 1.0F, 0.0F, 0.0F);
 	//glRotatef(30.0F, 0.0F, 1.0F, 0.0F);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadMatrixf(glm::value_ptr(states.m_viewModelMat));
+	glMatrixMode(GL_PROJECTION);
+	glLoadMatrixf(glm::value_ptr(states.m_projectionMat));
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_LIGHTING);
 	glEnable(GL_LIGHT0);
-	const auto light0_position = glm::vec4(-1.f, -1.f, -1.f, 0.f);
-	const auto light0_ambient = glm::vec4(0.f, 0.f, 0.f, 1.f);
-	const auto light0_diffuse = glm::vec4(0.01f, 0.01f, 0.01f, 1.f);
-	const auto light0_specular = glm::vec4(0.01f, 0.01f, 0.01f, 1.f);
+	glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, GL_TRUE);
+	const auto light0_position = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f);
+	const auto light0_ambient = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
+	const auto light0_diffuse = glm::vec4(0.8f, 0.8f, 0.8f, 1.0f);
+	const auto light0_specular = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+	const auto global_ambient = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 	glLightfv(GL_LIGHT0, GL_POSITION, glm::value_ptr(light0_position));
 	glLightfv(GL_LIGHT0, GL_AMBIENT, glm::value_ptr(light0_ambient));
 	glLightfv(GL_LIGHT0, GL_DIFFUSE, glm::value_ptr(light0_diffuse));
 	glLightfv(GL_LIGHT0, GL_SPECULAR, glm::value_ptr(light0_specular));
+	glLightModelfv(GL_LIGHT_MODEL_AMBIENT, glm::value_ptr(global_ambient));
 
 	glEnable(GL_COLOR_MATERIAL);
-	glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
-	const auto mat_specular = glm::vec4(1.0f, 1.0f, 1.0f, 1.f);
-	const auto mat_emission = glm::vec4(0.0f, 0.0f, 0.0f, 1.f);
-	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, glm::value_ptr(mat_specular));
-	glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, glm::value_ptr(mat_emission));
+	glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
+	const auto mat_specular = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+	const auto mat_emission = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	glMaterialfv(GL_FRONT, GL_SPECULAR, glm::value_ptr(mat_specular));
+	glMaterialfv(GL_FRONT, GL_EMISSION, glm::value_ptr(mat_emission));
+	glMaterialf(GL_FRONT, GL_SHININESS, 10);
 
-	glClearColor(1.f, 1.f, 1.f, 1.f);
+	glClearColor(0.f, 0.f, 0.f, 0.f);
+	glShadeModel(GL_SMOOTH);
 }
 
 void
@@ -61,7 +70,7 @@ redraw(void) {
 	/* clear color and depth buffers */
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	static auto angle = 0.0f;
-	states.m_rotation = glm::angleAxis<float>( glm::pi<float>() * angle, glm::normalize(glm::vec3(1, 1, 0)) );
+	states.m_rotation = glm::angleAxis<float>( glm::pi<float>() * angle, glm::normalize(glm::vec3(angle, 1, 0)) );
 	angle += 0.01f;
 	glm::mat4 modelMatrix = glm::translate(glm::mat4(1.0f), states.m_pan)
 		* glm::toMat4(states.m_rotation)
@@ -73,12 +82,13 @@ redraw(void) {
 	states.m_mvp = states.m_projectionMat * states.m_viewModelMat;
 	states.m_mvpInv = glm::inverse(states.m_mvp);
 
-	glLoadMatrixf(glm::value_ptr(states.m_mvp));
-	//static float angle = 1.f;
-	//glRotatef(angle, 1.0F, 1.0F, 1.0F);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadMatrixf(glm::value_ptr(states.m_viewModelMat));
+	glMatrixMode(GL_PROJECTION);
+	glLoadMatrixf(glm::value_ptr(states.m_projectionMat));
 	
 	/* draw six faces of a cube */
-	glColor3f(0, 0.5f, 0);
+	glColor3f(0.f, 0.5f, 0.f);
 	glBegin(GL_QUADS);
 	glNormal3f(0.0F, 0.0F, 1.0F);
 	glVertex3f(0.5F, 0.5F, 0.5F); glVertex3f(-0.5F, 0.5F, 0.5F);
